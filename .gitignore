@@ -2,3 +2,4 @@ __pycache__
 
 lab2/mms/*
 !lab2/mms/mms-github-repo.txt
+lab2/q_table.npy
