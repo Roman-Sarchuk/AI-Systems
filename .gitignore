@@ -1,0 +1,4 @@
+__pycache__
+
+lab2/mms/*
+!lab2/mms/mms-github-repo.txt
