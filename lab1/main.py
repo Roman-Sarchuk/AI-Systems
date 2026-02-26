@@ -1,170 +1,236 @@
 from enum import Enum
-from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
+from typing import Tuple, Optional
+from collections import deque
+import time
+
+
+START = [
+    [7, 8, 3],
+    [4, 5, 6],
+    [1, 2, 0]
+]
+
+GOAL = [
+    [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 0]
+]
+
+DEATH_LEVEL = 10
 
 
 class Direction(Enum):
-    UP = "U"
-    DOWN = "D"
-    LEFT = "L"
-    RIGHT = "R"
+    DOWN = (1, 0)
+    UP = (-1, 0)
+    LEFT = (0, -1)
+    RIGHT = (0, 1)
 
 
+@dataclass(frozen=True)
 class Field:
-    """
-    Field is a square matrix of integers. Each cell can be either 0 (empty cell) or number from 1 to 8.
-    """
+    size: int
+    tiles: Tuple[Tuple[int, ...], ...]
+    empty_pos: Tuple[int, int]
 
-    def __init__(self, field: list[list[int]]):
-        self._field: list[list[int]] = list()
-        self._size: int = 0
-        self._empty_cell_pos: tuple[int, int] = tuple()
+    @staticmethod
+    def from_list(field: list[list[int]]) -> "Field":
+        size = len(field)
+        tiles = tuple(tuple(row) for row in field)
 
-        self.set_field(field)
+        for i in range(size):
+            for j in range(size):
+                if tiles[i][j] == 0:
+                    return Field(size, tiles, (i, j))
+
+        raise ValueError("No empty cell (0) found")
+
+    def move(self, direction: Direction) -> Optional["Field"]:
+        dx, dy = direction.value
+        x, y = self.empty_pos
+        new_x, new_y = x + dx, y + dy
+
+        if not (0 <= new_x < self.size and 0 <= new_y < self.size):
+            return None
+
+        new_tiles = [list(row) for row in self.tiles]
+        new_tiles[x][y], new_tiles[new_x][new_y] = \
+            new_tiles[new_x][new_y], new_tiles[x][y]
+
+        return Field.from_list(new_tiles)
     
-    def __eq__(self, other: Field) -> bool:
-        if not isinstance(other, Field):
-            raise ValueError("Other object must be of type Field")
-        return self._field == other._field
-    
-    def set_field(self, field: list[list[int]]):
-        """
-        Field is a square matrix of integers. Each cell can be either 0 (empty cell) or number from 1 to 8.
-        """
-        if len(field) != len(field[0]):
-            raise ValueError("Field must be square matrix")
-        self._size = len(field)
-
-        self._field = field
-        for k in range(self._size*self._size):
-            j = k % self._size
-            i = k // self._size
-            if field[i][j] == 0:
-                self._empty_cell_pos = (i, j)
-                break
-    
-    def get_size(self) -> int:
-        return self._size
-    
-    def get_empty_cell_pos(self) -> tuple[int, int]:
-        return self._empty_cell_pos
-    
-    def get_cell_value(self, row, col) -> int:
-        if row < 0 or row >= self._size or col < 0 or col >= self._size:
-            return -1
-        return self._field[row][col]
-    
-    def get_relative_cell_value(self, direction: Direction) -> int:
-        row, col = self._empty_cell_pos
-        if direction == Direction.UP:
-            row -= 1
-        elif direction == Direction.DOWN:
-            row += 1
-        elif direction == Direction.LEFT:
-            col -= 1
-        elif direction == Direction.RIGHT:
-            col += 1
-        else:
-            raise ValueError("Invalid direction value")
-        return self.get_cell_value(row, col)
-    
-    def swap_cells(self, pos1: tuple[int, int], pos2: tuple[int, int]):
-        if pos1[0] < 0 or pos1[0] >= self._size or pos1[1] < 0 or pos1[1] >= self._size:
-            raise ValueError("Position 1 is out of field bounds")
-        
-        if self._field[pos1[0]][pos1[1]] == 0:
-            self._empty_cell_pos = pos2
-        elif self._field[pos2[0]][pos2[1]] == 0:
-            self._empty_cell_pos = pos1
-
-        self._field[pos1[0]][pos1[1]], self._field[pos2[0]][pos2[1]] = \
-            self._field[pos2[0]][pos2[1]], self._field[pos1[0]][pos1[1]]
-        
-
-class PuzzleController:
-    """
-    Field is a square matrix of integers. Each cell can be either 0 (empty cell) or number from 1 to 8.
-    Win pattern is a dictionary that maps direction to cell value. 
-    For example, if win pattern is {Direction.UP: 1, Direction.DOWN: 7, Direction.LEFT: 5, Direction.RIGHT: 6}, 
-    then player wins if empty cell has 1 above it, 7 below it, 5 to the left of it and 6 to the right of it.
-    """
-
-    def __init__(self, field: list[list[int]], win_pattern: list[list]):
-        self._field: Field = Field(field)
-        self._field.set_field(field)
-
-        self._win_pattern = list()
-
-        self.set_win_pattern(win_pattern)
-    
-    def set_win_pattern(self, win_pattern: list[list]):
-        if not self._field or len(win_pattern) != self._size:
-            raise ValueError("Win pattern must be square matrix of the same size as field")
-        
-        self._win_pattern = win_pattern
-    
-    def try_move(self, direction: Direction) -> bool:
-        """
-        Try to move empty cell in given direction. If move is possible, move empty cell and return True. Otherwise, return False.
-        """
-        size = self._field.get_size()
-        row, col = self._field.get_empty_cell_pos()
-
-        if direction == Direction.UP:
-            row -= 1
-        elif direction == Direction.DOWN:
-            row += 1
-        elif direction == Direction.LEFT:
-            col -= 1
-        elif direction == Direction.RIGHT:
-            col += 1
-        else:
-            raise ValueError("Invalid direction value")
-
-        if row < 0 or row >= size or col < 0 or col >= size:
-            return False
-
-        self._field.swap_cells((row, col), self._field.get_empty_cell_pos())
+    def is_goal(self, goal: "Field") -> bool:
+        for i in range(self.size):
+            for j in range(self.size):
+                if goal.tiles[i][j] == "*":
+                    continue
+                elif self.tiles[i][j] != goal.tiles[i][j]:
+                    return False
         return True
     
-    def is_win(self) -> bool:
-        """
-        Check if current field state is win pattern.
-        """
-        return self._field.get_relative_cell_value(Direction.UP) == self._win_pattern[Direction.UP] and \
-               self._field.get_relative_cell_value(Direction.DOWN) == self._win_pattern[Direction.DOWN] and \
-               self._field.get_relative_cell_value(Direction.LEFT) == self._win_pattern[Direction.LEFT] and \
-               self._field.get_relative_cell_value(Direction.RIGHT) == self._win_pattern[Direction.RIGHT]
-    
-    
+    def __str__(self):
+        return "\n".join(" ".join(str(cell) for cell in row) for row in self.tiles)
+
+
 @dataclass
 class Node:
-    value: Any
-    parent: Node | None = None
-    children: list[Node] = field(default_factory=list)
-
-    def __post_init__(self):
-        if self.parent:
-            self.parent.children.append(self)
+    state: Field
+    parent: Optional["Node"]
+    move: Optional[Direction]
 
 
-START_FIELD = [
-    [1, 2, 3],
-    [5, 6, 0],
-    [7, 8, 4]
-]
+visited_state_count = 0
+expanded_node_count = 0
+total_generated_node_count = 0
+max_queue_size = 1
 
-WIN_PATTERN = {
-    Direction.UP: 1,
-    Direction.DOWN: 7,
-    Direction.LEFT: 5,
-    Direction.RIGHT: 6
-}
+def bfs(start: Field, goal: Field) -> Optional[Node]:
+    global visited_state_count, expanded_node_count, total_generated_node_count, max_queue_size
+    queue = deque([Node(start, None, None)])
+    visited = {start}
+
+    while queue:
+        current_node = queue.popleft()
+        current_state = current_node.state
+        expanded_node_count += 1
+
+        if current_state.is_goal(goal):
+            visited_state_count = len(visited)
+            return current_node
+
+        for direction in Direction:
+            new_state = current_state.move(direction)
+
+            if new_state is None:
+                continue
+            
+            total_generated_node_count += 1
+
+            if new_state in visited:
+                continue
+
+            visited.add(new_state)
+            queue.append(Node(new_state, current_node, direction))
+            max_queue_size = max(max_queue_size, len(queue))
+
+    visited_state_count = len(visited)
+    return None
+
+
+def dfs(start: Field, goal: Field) -> Optional[Node]:
+    global visited_state_count, expanded_node_count, total_generated_node_count, max_queue_size
+
+    stack = [Node(start, None, None)]
+    visited = {start}
+
+    while stack:
+        current_node = stack.pop()
+        current_state = current_node.state
+        expanded_node_count += 1
+
+        if current_state.is_goal(goal):
+            visited_state_count = len(visited)
+            return current_node
+
+        for direction in Direction:
+            new_state = current_state.move(direction)
+
+            if new_state is None:
+                continue
+
+            total_generated_node_count += 1
+
+            if new_state in visited:
+                continue
+
+            visited.add(new_state)
+            stack.append(Node(new_state, current_node, direction))
+            max_queue_size = max(max_queue_size, len(stack))
+
+    visited_state_count = len(visited)
+    return None
+
+
+
+def reconstruct_path(node: Node):
+    moves = []
+    while node.parent is not None:
+        moves.append(node.move)
+        node = node.parent
+    moves.reverse()
+    return moves
 
 
 def main():
-    controller = PuzzleController(START_FIELD, WIN_PATTERN)
+    start_field = Field.from_list(START)
+    goal_field = Field.from_list(GOAL)
+
+    print("--- Task statement ---")
+    print("Start state:")
+    print(start_field)
+    print("\nGoal state:")
+    for i in range(goal_field.size):
+        row = []
+        for j in range(goal_field.size):
+            cell = goal_field.tiles[i][j]
+            row.append(str(cell) if cell != "*" else "*")
+        print(" ".join(row))
+    print("-----------------------")
+
+
+    print("What to use?\n1. BFS\n2. DFS")
+    choose = input("Enter your choice: ")
+
+    result = None
+
+    start_time = time.perf_counter()
+    if choose == "1":
+        result = bfs(start_field, goal_field)
+    elif choose == "2":
+        result = dfs(start_field, goal_field)
+    else:
+        print("Invalid choice.")
+        return
+    end_time = time.perf_counter()
+
+    print("\n--- Performance Metrics ---")
+    print("Execution time:", end_time - start_time, "s")
+    print("Total generated nodes:", total_generated_node_count)
+    print("Visited states:", visited_state_count)
+    print("Expanded nodes:", expanded_node_count)
+    print("Branching factor:", total_generated_node_count / expanded_node_count if expanded_node_count > 0 else 0)
+    print("Max queue size:", max_queue_size)
+    print("---------------------------")
+    print()
+
+    print("--- Results ---")
+    if result:
+        path = reconstruct_path(result)
+        print("Solution found!")
+        print("Moves:", [move.name for move in path])
+        print("Number of moves:", len(path))
+
+        print("\nFinal state:")
+        print(result.state)
+
+        print(f"\nDo you want to see the path of states (DEATH_LEVEL={DEATH_LEVEL})? (y/n)")
+
+        choice = input("Enter your choice: ")
+        if choice.lower() == "y":
+            current = result
+            for _ in range(DEATH_LEVEL):
+                if current is None:
+                    break
+                print(current.state)
+                print()
+                if current.move is not None:
+                    print(f"Move: {current.move.name}")
+                    print()
+                current = current.parent
+
+    else:
+        print("No solution found.")
+    print("----------------")
 
 
 if __name__ == "__main__":
