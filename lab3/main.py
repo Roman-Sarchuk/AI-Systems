@@ -214,7 +214,8 @@ def main():
     print("="*50 + "\n")
 
     # CITY GENERATION
-    cities = np.random.rand(NUM_CITIES, 2) * 100
+    rng = np.random.default_rng()
+    cities = rng.uniform(0.0, 1.0, size=(NUM_CITIES, 2)) * 100
 
     # MAIN ALGORITHM
     population = create_population(NUM_CITIES, POPULATION_SIZE)
