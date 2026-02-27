@@ -1,4 +1,3 @@
-from py_compile import main
 import random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -23,11 +22,11 @@ def fitness(cities, route):
 
 
 # INITIAL POPULATION
-def create_population():
+def create_population(num_cities, population_size):
     """Create random initial population"""
     population = []
-    base = list(range(NUM_CITIES))
-    for _ in range(POPULATION_SIZE):
+    base = list(range(num_cities))
+    for _ in range(population_size):
         individual = base[:]
         random.shuffle(individual)
         population.append(individual)
@@ -35,23 +34,23 @@ def create_population():
 
 
 # SELECTION (tournament)
-def tournament_selection(cities, population):
+def tournament_selection(cities, population, tournament_size):
     """Select best individual from random tournament"""
-    tournament = random.sample(population, TOURNAMENT_SIZE)
+    tournament = random.sample(population, tournament_size)
     tournament.sort(key=lambda x: route_distance(cities, x))
     return tournament[0]
 
 
 # CROSSOVER (Order Crossover OX)
-def crossover(parent1, parent2):
+def crossover(parent1, parent2, num_cities):
     """
     Order Crossover (OX):
     1. Select random segment from parent1
     2. Copy segment to child
     3. Fill remaining positions with genes from parent2 in order
     """
-    start, end = sorted(random.sample(range(NUM_CITIES), 2))
-    child = [None] * NUM_CITIES
+    start, end = sorted(random.sample(range(num_cities), 2))
+    child = [None] * num_cities
     child[start:end] = parent1[start:end]
 
     pointer = 0
@@ -65,49 +64,164 @@ def crossover(parent1, parent2):
 
 
 # MUTATION (swap two cities)
-def mutate(route):
+def mutate(route, mutation_rate, num_cities):
     """Swap two random cities with probability MUTATION_RATE"""
-    if random.random() < MUTATION_RATE:
-        i, j = random.sample(range(NUM_CITIES), 2)
+    if random.random() < mutation_rate:
+        i, j = random.sample(range(num_cities), 2)
         route[i], route[j] = route[j], route[i]
 
 
-# DEFAULT PARAMETERS
-NUM_CITIES = 20
-POPULATION_SIZE = 100
-GENERATIONS = 300
-MUTATION_RATE = 0.02
-TOURNAMENT_SIZE = 5
+def get_user_input():
+    """Get parameters from user with validation"""
+    
+    print("\n" + "="*50)
+    print("TSP GENETIC ALGORITHM CONFIGURATION")
+    print("="*50)
+    
+    # Default values
+    defaults = {
+        'num_cities': 20,
+        'population_size': 100,
+        'generations': 300,
+        'mutation_rate': 0.02,
+        'tournament_size': 5
+    }
+    
+    print(f"\nDefault parameters:")
+    print(f"  • Number of cities: {defaults['num_cities']}")
+    print(f"  • Population size: {defaults['population_size']}")
+    print(f"  • Number of generations: {defaults['generations']}")
+    print(f"  • Mutation rate: {defaults['mutation_rate']}")
+    print(f"  • Tournament size: {defaults['tournament_size']}")
+    
+    print("\n" + "-"*50)
+    user_input = input("Do you want to use default parameters? (y/n): ").strip().lower()
+    
+    if user_input == 'y':
+        print("\n✅ Using default parameters")
+        return defaults
+    
+    print("\n📝 Enter custom parameters (press Enter to keep default value)")
+    print("-"*50)
+    
+    params = {}
+    
+    # Number of cities
+    while True:
+        try:
+            value = input(f"Number of cities [{defaults['num_cities']}]: ").strip()
+            if value == "":
+                params['num_cities'] = defaults['num_cities']
+                break
+            value = int(value)
+            if value > 2:
+                params['num_cities'] = value
+                break
+            else:
+                print("❌ Number of cities must be greater than 2")
+        except ValueError:
+            print("❌ Please enter a valid integer")
+    
+    # Population size
+    while True:
+        try:
+            value = input(f"Population size [{defaults['population_size']}]: ").strip()
+            if value == "":
+                params['population_size'] = defaults['population_size']
+                break
+            value = int(value)
+            if value > 0:
+                params['population_size'] = value
+                break
+            else:
+                print("❌ Population size must be positive")
+        except ValueError:
+            print("❌ Please enter a valid integer")
+    
+    # Number of generations
+    while True:
+        try:
+            value = input(f"Number of generations [{defaults['generations']}]: ").strip()
+            if value == "":
+                params['generations'] = defaults['generations']
+                break
+            value = int(value)
+            if value > 0:
+                params['generations'] = value
+                break
+            else:
+                print("❌ Number of generations must be positive")
+        except ValueError:
+            print("❌ Please enter a valid integer")
+    
+    # Mutation rate
+    while True:
+        try:
+            value = input(f"Mutation rate (0.0-1.0) [{defaults['mutation_rate']}]: ").strip()
+            if value == "":
+                params['mutation_rate'] = defaults['mutation_rate']
+                break
+            value = float(value)
+            if 0 <= value <= 1:
+                params['mutation_rate'] = value
+                break
+            else:
+                print("❌ Mutation rate must be between 0 and 1")
+        except ValueError:
+            print("❌ Please enter a valid number")
+    
+    # Tournament size
+    while True:
+        try:
+            value = input(f"Tournament size [{defaults['tournament_size']}]: ").strip()
+            if value == "":
+                params['tournament_size'] = defaults['tournament_size']
+                break
+            value = int(value)
+            if value > 1:
+                params['tournament_size'] = value
+                break
+            else:
+                print("❌ Tournament size must be greater than 1")
+        except ValueError:
+            print("❌ Please enter a valid integer")
+    
+    print("\n✅ Custom parameters set successfully")
+    return params
+
 
 def main():
-    global NUM_CITIES, POPULATION_SIZE, GENERATIONS, MUTATION_RATE, TOURNAMENT_SIZE
-
-    # USER INPUT
-    print("Do you want to use default parameters? (y/n)")
-    user_input = input("> ").strip().lower()
-    if user_input == 'n':
-        print("Enter number value for parameter or d for default value.")
-        value = int(input("number of cities: "))
-        NUM_CITIES = value if value > 0 else NUM_CITIES
-        value = int(input("population size: "))
-        POPULATION_SIZE = value if value > 0 else POPULATION_SIZE
-        value = int(input("number of generations: "))
-        GENERATIONS = value if value > 0 else GENERATIONS
-        value = float(input("mutation rate (0.0-1.0): "))
-        MUTATION_RATE = value if 0 <= value <= 1 else MUTATION_RATE
-        value = int(input("tournament size: "))
-        TOURNAMENT_SIZE = value if value > 0 else TOURNAMENT_SIZE
+    # GET USER PARAMETERS
+    params = get_user_input()
     
-    print(f"\nTSP Parameters: NUM_CITIES={NUM_CITIES}, POPULATION_SIZE={POPULATION_SIZE}, GENERATIONS={GENERATIONS}, MUTATION_RATE={MUTATION_RATE}, TOURNAMENT_SIZE={TOURNAMENT_SIZE}\n")
+    # Extract parameters
+    NUM_CITIES = params['num_cities']
+    POPULATION_SIZE = params['population_size']
+    GENERATIONS = params['generations']
+    MUTATION_RATE = params['mutation_rate']
+    TOURNAMENT_SIZE = params['tournament_size']
+    
+    # Display configuration
+    print("\n" + "="*50)
+    print("🚀 STARTING TSP GENETIC ALGORITHM")
+    print("="*50)
+    print(f"Configuration:")
+    print(f"  • Number of cities: {NUM_CITIES}")
+    print(f"  • Population size: {POPULATION_SIZE}")
+    print(f"  • Number of generations: {GENERATIONS}")
+    print(f"  • Mutation rate: {MUTATION_RATE}")
+    print(f"  • Tournament size: {TOURNAMENT_SIZE}")
+    print("="*50 + "\n")
 
     # CITY GENERATION
     cities = np.random.rand(NUM_CITIES, 2) * 100
 
     # MAIN ALGORITHM
-    population = create_population()
+    population = create_population(NUM_CITIES, POPULATION_SIZE)
     best_route = None
     best_distance = float("inf")
 
+    # Setup plot
     plt.ion()
     fig, ax = plt.subplots()
 
@@ -117,14 +231,14 @@ def main():
         # Create new generation
         for _ in range(POPULATION_SIZE):
             # Selection
-            parent1 = tournament_selection(cities, population)
-            parent2 = tournament_selection(cities, population)
+            parent1 = tournament_selection(cities, population, TOURNAMENT_SIZE)
+            parent2 = tournament_selection(cities, population, TOURNAMENT_SIZE)
 
             # Crossover
-            child = crossover(parent1, parent2)
+            child = crossover(parent1, parent2, NUM_CITIES)
             
             # Mutation
-            mutate(child)
+            mutate(child, MUTATION_RATE, NUM_CITIES)
 
             new_population.append(child)
 
@@ -137,12 +251,12 @@ def main():
         if current_distance < best_distance:
             best_distance = current_distance
             best_route = current_best
-            print(f"Generation {generation}, best distance: {best_distance:.2f}")
+            print(f"✨ Generation {generation:3d}: best distance = {best_distance:.2f}")
 
         # Visualization
         if generation % 5 == 0:
             ax.clear()
-            best_cities = cities[current_best]
+            best_cities = cities[best_route]
 
             # Plot all cities except the first one in blue
             ax.scatter(cities[1:, 0], cities[1:, 1], c='blue', label='Other cities')
@@ -157,18 +271,26 @@ def main():
                 'g-', alpha=0.7
             )
 
-            ax.set_title(f"Generation {generation}, distance: {best_distance:.2f}")
-            # ax.legend()
+            ax.set_title(f"Generation {generation}/{GENERATIONS} - Best Distance: {best_distance:.2f}")
+            ax.set_xlabel('X Coordinate')
+            ax.set_ylabel('Y Coordinate')
+            ax.grid(True, alpha=0.3)
+            # ax.legend(loc='upper right')
             plt.pause(0.01)
     
     # FINAL RESULT
-    print("\nBEST ROUTE FOUND")
-    print("Route length:", best_distance)
+    print("\n" + "="*50)
+    print("🎉 BEST ROUTE FOUND")
+    print("="*50)
+    print(f"Route length: {best_distance:.2f}")
+    print(f"Route order: {best_route}")
+    print("="*50)
 
-    plt.title("Best Found Route")
+    plt.title(f"FINAL: Best Found Route (Length: {best_distance:.2f})")
     plt.ioff()
     plt.show()
 
 if __name__ == "__main__":
-    print("Running Genetic Algorithm for TSP...\n")
+    print("🧬 GENETIC ALGORITHM FOR TRAVELING SALESMAN PROBLEM")
+    print("="*50)
     main()
