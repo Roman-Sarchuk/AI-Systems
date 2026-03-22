@@ -4,3 +4,8 @@ lab2/mms/*
 !lab2/mms/mms-github-repo.txt
 lab2/q_table.npy
 lab2/RAM
+
+selfstudy/mms/*
+!selfstudy/mms/mms-github-repo.txt
+selfstudy/q_table.npy
+selfstudy/RAM
