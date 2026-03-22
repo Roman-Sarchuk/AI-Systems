@@ -9,3 +9,4 @@ selfstudy/mms/*
 !selfstudy/mms/mms-github-repo.txt
 selfstudy/q_table.npy
 selfstudy/RAM
+selfstudy/params.json
