@@ -17,7 +17,7 @@ GOAL = [
     [7, 8, 0]
 ]
 
-DEATH_LEVEL = 10
+DEPTH_LEVEL = 10
 
 
 class Direction(Enum):
@@ -213,12 +213,12 @@ def main():
         print("\nFinal state:")
         print(result.state)
 
-        print(f"\nDo you want to see the path of states (DEATH_LEVEL={DEATH_LEVEL})? (y/n)")
+        print(f"\nDo you want to see the path of states (DEATH_LEVEL={DEPTH_LEVEL})? (y/n)")
 
         choice = input("Enter your choice: ")
         if choice.lower() == "y":
             current = result
-            for _ in range(DEATH_LEVEL):
+            for _ in range(DEPTH_LEVEL):
                 if current is None:
                     break
                 print(current.state)
