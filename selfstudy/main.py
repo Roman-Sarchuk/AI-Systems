@@ -51,7 +51,6 @@ EPISODES = 200
 MAX_STEPS = 200
 
 
-
 TEMPLATE_FILE = os.path.join(os.path.dirname(__file__), "params.json")
 
 DEFAULT_CONFIG = {
@@ -121,34 +120,44 @@ class SettingsDialog(QDialog):
         self.setFont(QFont("Segoe UI", 9))
         self.setStyleSheet(
             """
-            QDialog { background: #d4d0c8; }
-            QGroupBox {
-                border: 1px solid #808080;
-                margin-top: 8px;
-                font-weight: bold;
-                background: #d4d0c8;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 8px;
-                padding: 0 4px;
-            }
-            QLabel, QCheckBox { color: #111111; }
-            QLineEdit, QSpinBox, QDoubleSpinBox {
-                background: #ffffff;
-                border: 1px solid #808080;
-                padding: 2px;
-            }
-            QPushButton {
-                background: #e1e1e1;
-                border: 1px solid #707070;
-                min-width: 110px;
-                padding: 4px 10px;
-            }
-            QPushButton:pressed {
-                background: #c8c8c8;
-            }
-            """
+    QDialog { 
+        background-color: #f0f0f0; 
+    }
+    QGroupBox {
+        font-weight: bold;
+        border: 1px solid #c0c0c0;
+        margin-top: 10px;
+        padding-top: 10px;
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        subcontrol-position: top left;
+        left: 10px;
+        padding: 0 3px;
+    }
+    QLineEdit, QSpinBox, QDoubleSpinBox {
+        background-color: #ffffff;
+        border: 1px solid #cccccc;
+        padding: 4px;
+        selection-background-color: #0078d7;
+    }
+    QPushButton {
+        background-color: #e1e1e1;
+        border: 1px solid #adadad;
+        min-width: 80px;
+        padding: 5px;
+    }
+    QPushButton:hover {
+        background-color: #e5f1fb;
+        border: 1px solid #0078d7;
+    }
+    QPushButton:pressed {
+        background-color: #cce4f7;
+    }
+    QLabel {
+        color: #333333;
+    }
+    """
         )
         self._build_ui()
         self._load_config_to_widgets(DEFAULT_CONFIG)
@@ -216,7 +225,7 @@ class SettingsDialog(QDialog):
 
         buttons = QHBoxLayout()
         self.load_template_btn = QPushButton("Load Template")
-        self.save_template_btn = QPushButton("Save as Template")
+        self.save_template_btn = QPushButton("Save Template")
         self.apply_btn = QPushButton("Apply/Run")
         self.cancel_btn = QPushButton("Cancel")
 
@@ -287,13 +296,15 @@ class SettingsDialog(QDialog):
             }
             with open(TEMPLATE_FILE, "w", encoding="utf-8") as fh:
                 json.dump(serializable, fh, indent=2)
-            QMessageBox.information(self, "Template saved", f"Saved to {TEMPLATE_FILE}")
+            QMessageBox.information(
+                self, "Template saved", f"Saved to {TEMPLATE_FILE}")
         except Exception as exc:
             self._show_error(exc)
 
     def _load_template(self):
         if not os.path.exists(TEMPLATE_FILE):
-            QMessageBox.information(self, "Template not found", "params.json does not exist yet.")
+            QMessageBox.information(
+                self, "Template not found", "params.json does not exist yet.")
             return
 
         try:
@@ -315,7 +326,8 @@ class SettingsDialog(QDialog):
                 "clear_q": bool(data["clear_q"]),
             }
 
-            validate_positions(config["win_position"], config["start_position"])
+            validate_positions(config["win_position"],
+                               config["start_position"])
             self._load_config_to_widgets(config)
         except Exception as exc:
             self._show_error(f"Failed to load template: {exc}")
@@ -327,28 +339,35 @@ class SettingsDialog(QDialog):
         except Exception as exc:
             self._show_error(exc)
 
-def save_q_table():
+
 def save_q_table(q_file):
     np.save(q_file, Q)
+    API.log(f"Q-table saved to {q_file}")
 
-def load_q_table():
+
 def load_q_table(q_file):
-    if os.path.exists(Q_FILE):
+    global Q
     if os.path.exists(q_file):
-        loaded_q = np.load(q_file)
-        if loaded_q.shape != Q.shape:
-            API.log(f"Q-table shape mismatch: expected {Q.shape}, got {loaded_q.shape}. Using fresh table.")
-            return
-        Q = loaded_q
-        API.log("Q-table loaded.")
+        try:
+            loaded_q = np.load(q_file)
+            if loaded_q.shape == Q.shape:
+                Q = loaded_q
+                API.log("Q-table loaded successfully.")
+            else:
+                API.log(
+                    f"Shape mismatch: {loaded_q.shape} vs {Q.shape}. New table created.")
+        except Exception as e:
+            API.log(f"Error loading Q-table: {e}")
+    else:
         API.log("No saved Q-table found.")
 
-def clear_q_table():
+
 def clear_q_table(q_file):
     if os.path.exists(q_file):
         os.remove(q_file)
+        API.log("Q-table file deleted.")
     else:
-        API.log("No saved Q-table to delete.")
+        API.log("Nothing to delete.")
 
 
 def get_next_position(x, y, orientation):
@@ -370,6 +389,7 @@ def get_state_index(x, y, orientation, is_wall):
         is_wall
     )
 
+
 def choose_action(state, epsilon):
     """
     Choose action using ε-greedy strategy.
@@ -381,6 +401,7 @@ def choose_action(state, epsilon):
     else:
         # exploitation: best known action
         return int(np.argmax(Q[state]))
+
 
 def main(config):
     global Q
@@ -423,7 +444,7 @@ def main(config):
     for pos in win_positions:
         API.setColor(pos[0], pos[1], "G")
         API.setText(pos[0], pos[1], "win0")
-    
+
     prev_win_strikes = 0
     win_strikes = 0
 
@@ -445,13 +466,13 @@ def main(config):
             epsilon = max(0.01, epsilon * 0.99)  # decreasing ε over time
             state = get_state_index(x, y, orientation, API.wallFront())
             action = choose_action(state, epsilon)
-            
+
             # Execute action
             try:
                 if action == 0:  # move forward
                     API.moveForward()
-                    x, y = get_next_position(x, y, orientation) 
-                    reward = -0.1 
+                    x, y = get_next_position(x, y, orientation)
+                    reward = -0.1
                 elif action == 1:  # turn left
                     API.turnLeft()
                     orientation = (orientation - 1) % NUM_ORIENTATIONS
@@ -467,7 +488,8 @@ def main(config):
                     reward = 1000
                     win_strikes += 1
                     done = True  # don't end episode if goal reached
-                    API.log(f"Mouse reached win#{win_strikes}! R: +++++++++1000\n\n")
+                    API.log(
+                        f"Mouse reached win#{win_strikes}! R: +++++++++1000\n\n")
             except API.MouseCrashedError:
                 API.setWall(x, y, API.DIRECTIONS[orientation])
                 reward = -100
@@ -484,6 +506,7 @@ def main(config):
 
     if config["save_q"]:
         save_q_table(q_file)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
