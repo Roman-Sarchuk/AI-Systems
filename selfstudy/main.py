@@ -25,7 +25,7 @@ from PyQt6.QtWidgets import (
 
 # params
 # Example win positions: "4,4" or "7,7;7,8;8,7;8,8"
-win_position = [(4, 4)]
+WIN_POSITION = [(4, 4)]
 START_POSITION = (0, 0)
 Q_FILE = "q_table.npy"
 NUM_WIN_STRIKES = 10
@@ -54,8 +54,7 @@ MAX_STEPS = 200
 TEMPLATE_FILE = os.path.join(os.path.dirname(__file__), "params.json")
 
 DEFAULT_CONFIG = {
-    "win_position": win_position,
-    "start_position": START_POSITION,
+    "win_position": WIN_POSITION,
     "q_file": Q_FILE,
     "num_win_strikes": NUM_WIN_STRIKES,
     "alpha": ALPHA,
@@ -92,11 +91,20 @@ def parse_win_positions(text):
     return positions
 
 
-def validate_positions(win_positions, start_position):
-    sx, sy = start_position
+def validate_positions(win_positions):
+    sx, sy = START_POSITION
+
+    # In MMS, ackReset() always places the mouse at (0, 0).
+    # Disallow custom start positions to keep internal state synchronized.
+    if START_POSITION != (0, 0):
+        raise ValueError(
+            "START_POSITION must be 0,0 for MMS reset mode. "
+            "The simulator resets mouse position to (0,0)."
+        )
+
     if sx < 0 or sy < 0 or sx >= MAZE_WIDTH or sy >= MAZE_HEIGHT:
         raise ValueError(
-            f"START_POSITION {start_position} is out of maze bounds {MAZE_WIDTH}x{MAZE_HEIGHT}"
+            f"START_POSITION {START_POSITION} is out of maze bounds {MAZE_WIDTH}x{MAZE_HEIGHT}"
         )
 
     for pos in win_positions:
@@ -105,6 +113,12 @@ def validate_positions(win_positions, start_position):
             raise ValueError(
                 f"WIN_POSITION {pos} is out of maze bounds {MAZE_WIDTH}x{MAZE_HEIGHT}"
             )
+
+    if START_POSITION in win_positions:
+        raise ValueError(
+            "START_POSITION cannot be the same as a win_position. "
+            f"Got START_POSITION={START_POSITION}."
+        )
 
 
 def positions_to_text(positions):
@@ -171,10 +185,6 @@ class SettingsDialog(QDialog):
         self.winp_edit = QLineEdit()
         self.winp_edit.setPlaceholderText("4,4 or 7,7;7,8;8,7;8,8")
         params_form.addRow("win_position", self.winp_edit)
-
-        self.start_edit = QLineEdit()
-        self.start_edit.setPlaceholderText("0,0")
-        params_form.addRow("START_POSITION", self.start_edit)
 
         self.qfile_edit = QLineEdit()
         params_form.addRow("Q_FILE", self.qfile_edit)
@@ -248,7 +258,6 @@ class SettingsDialog(QDialog):
     def _collect_config_from_widgets(self):
         config = {
             "win_position": parse_win_positions(self.winp_edit.text()),
-            "start_position": parse_single_position(self.start_edit.text().strip()),
             "q_file": self.qfile_edit.text().strip(),
             "num_win_strikes": int(self.strikes_spin.value()),
             "alpha": float(self.alpha_spin.value()),
@@ -264,14 +273,11 @@ class SettingsDialog(QDialog):
         if not config["q_file"]:
             raise ValueError("Q_FILE cannot be empty")
 
-        validate_positions(config["win_position"], config["start_position"])
+        validate_positions(config["win_position"])
         return config
 
     def _load_config_to_widgets(self, config):
         self.winp_edit.setText(positions_to_text(config["win_position"]))
-        self.start_edit.setText(
-            f"{config['start_position'][0]},{config['start_position'][1]}"
-        )
         self.qfile_edit.setText(config["q_file"])
         self.strikes_spin.setValue(config["num_win_strikes"])
         self.alpha_spin.setValue(config["alpha"])
@@ -292,7 +298,6 @@ class SettingsDialog(QDialog):
             serializable = {
                 **config,
                 "win_position": [list(p) for p in config["win_position"]],
-                "start_position": list(config["start_position"]),
             }
             with open(TEMPLATE_FILE, "w", encoding="utf-8") as fh:
                 json.dump(serializable, fh, indent=2)
@@ -313,7 +318,6 @@ class SettingsDialog(QDialog):
 
             config = {
                 "win_position": [tuple(p) for p in data["win_position"]],
-                "start_position": tuple(data["start_position"]),
                 "q_file": data["q_file"],
                 "num_win_strikes": int(data["num_win_strikes"]),
                 "alpha": float(data["alpha"]),
@@ -326,8 +330,7 @@ class SettingsDialog(QDialog):
                 "clear_q": bool(data["clear_q"]),
             }
 
-            validate_positions(config["win_position"],
-                               config["start_position"])
+            validate_positions(config["win_position"])
             self._load_config_to_widgets(config)
         except Exception as exc:
             self._show_error(f"Failed to load template: {exc}")
@@ -407,7 +410,7 @@ def main(config):
     global Q
 
     win_positions = config["win_position"]
-    start_position = config["start_position"]
+    start_position = START_POSITION
     q_file = config["q_file"]
     num_win_strikes_target = config["num_win_strikes"]
     alpha = config["alpha"]
@@ -424,7 +427,7 @@ def main(config):
     if config["load_q"]:
         load_q_table(q_file)
 
-    validate_positions(win_positions, start_position)
+    validate_positions(win_positions)
 
     API.log("Running with selected parameters:")
     API.log(f"win_position={win_positions}")
