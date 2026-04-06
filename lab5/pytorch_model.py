@@ -58,7 +58,7 @@ for epoch in range(epochs):
 
     val_running_loss = 0.0
     model.eval()
-    with torch.no_grad():
+    with torch.no_grad():   # Disabling gradient calculations for validation
         for images, labels in testloader:
             outputs = model(images)
             val_loss = criterion(outputs, labels)
@@ -72,7 +72,7 @@ for epoch in range(epochs):
 # 5. Calculating accuracy
 correct = 0
 total = 0
-with torch.no_grad(): # Disabling gradient calculations for testing
+with torch.no_grad():   # Disabling gradient calculations for testing
     for images, labels in testloader:
         outputs = model(images)
         _, predicted = torch.max(outputs.data, 1)
