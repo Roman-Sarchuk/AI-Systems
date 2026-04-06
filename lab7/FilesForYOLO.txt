@@ -1,0 +1,9 @@
+yolov3.cfg (github link):
+https://github.com/pjreddie/darknet/blob/master/cfg/yolov3.cfg
+
+coco.names (github link):
+https://github.com/pjreddie/darknet/blob/master/data/coco.names
+
+yolov3.weights (dwnload link):
+https://pjreddie.com/media/files/yolov3.weights
+

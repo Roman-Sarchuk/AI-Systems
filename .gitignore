@@ -9,7 +9,13 @@ lab2/RAM
 
 lab5/data
 
+lab7/*.weights
+lab7/*.cfg
+lab7/*.names
+lab7/*.jpg
+
 selfstudy/mms/*
 !selfstudy/mms/mms-github-repo.txt
 selfstudy/RAM
 selfstudy/params.json
+
