@@ -20,7 +20,9 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSpinBox,
+    QToolButton,
     QVBoxLayout,
+    QWidget,
 )
 
 # params
@@ -184,40 +186,88 @@ class SettingsDialog(QDialog):
 
         self.winp_edit = QLineEdit()
         self.winp_edit.setPlaceholderText("4,4 or 7,7;7,8;8,7;8,8")
-        params_form.addRow("win_position", self.winp_edit)
+        params_form.addRow(
+            "win_position",
+            self._build_field_with_info(
+                self.winp_edit,
+                "Target cell(s). Use x,y or multiple cells separated by ';'. Example: 4,4 or 7,7;7,8.",
+            ),
+        )
 
         self.qfile_edit = QLineEdit()
-        params_form.addRow("Q_FILE", self.qfile_edit)
+        params_form.addRow(
+            "Q_FILE",
+            self._build_field_with_info(
+                self.qfile_edit,
+                "Path to NumPy file for Q-table persistence. Example: q_table.npy",
+            ),
+        )
 
         self.strikes_spin = QSpinBox()
         self.strikes_spin.setRange(1, 100000)
-        params_form.addRow("NUM_WIN_STRIKES", self.strikes_spin)
+        params_form.addRow(
+            "NUM_WIN_STRIKES",
+            self._build_field_with_info(
+                self.strikes_spin,
+                "Training stops when this many successful goal reaches are accumulated.",
+            ),
+        )
 
         self.alpha_spin = QDoubleSpinBox()
         self.alpha_spin.setRange(0.0, 1.0)
         self.alpha_spin.setDecimals(4)
         self.alpha_spin.setSingleStep(0.01)
-        params_form.addRow("ALPHA", self.alpha_spin)
+        params_form.addRow(
+            "ALPHA",
+            self._build_field_with_info(
+                self.alpha_spin,
+                "Learning rate. Higher values learn faster but can be unstable.",
+            ),
+        )
 
         self.gamma_spin = QDoubleSpinBox()
         self.gamma_spin.setRange(0.0, 1.0)
         self.gamma_spin.setDecimals(4)
         self.gamma_spin.setSingleStep(0.01)
-        params_form.addRow("GAMMA", self.gamma_spin)
+        params_form.addRow(
+            "GAMMA",
+            self._build_field_with_info(
+                self.gamma_spin,
+                "Discount factor for future rewards. Near 1.0 values prioritize long-term reward.",
+            ),
+        )
 
         self.epsilon_spin = QDoubleSpinBox()
         self.epsilon_spin.setRange(0.0, 1.0)
         self.epsilon_spin.setDecimals(4)
         self.epsilon_spin.setSingleStep(0.01)
-        params_form.addRow("EPSILON", self.epsilon_spin)
+        params_form.addRow(
+            "EPSILON",
+            self._build_field_with_info(
+                self.epsilon_spin,
+                "Exploration rate at episode start. Higher values increase random actions.",
+            ),
+        )
 
         self.episodes_spin = QSpinBox()
         self.episodes_spin.setRange(1, 10000000)
-        params_form.addRow("EPISODES", self.episodes_spin)
+        params_form.addRow(
+            "EPISODES",
+            self._build_field_with_info(
+                self.episodes_spin,
+                "Maximum number of training episodes.",
+            ),
+        )
 
         self.max_steps_spin = QSpinBox()
         self.max_steps_spin.setRange(1, 10000000)
-        params_form.addRow("MAX_STEPS", self.max_steps_spin)
+        params_form.addRow(
+            "MAX_STEPS",
+            self._build_field_with_info(
+                self.max_steps_spin,
+                "Maximum actions per episode before forced reset.",
+            ),
+        )
 
         params_group.setLayout(params_form)
         root.addWidget(params_group)
@@ -254,6 +304,22 @@ class SettingsDialog(QDialog):
         footer = QLabel("© Roman (PP-34)")
         footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
         root.addWidget(footer)
+
+    def _build_field_with_info(self, widget, info_text):
+        row_widget = QWidget()
+        row_layout = QHBoxLayout(row_widget)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.setSpacing(6)
+
+        info_btn = QToolButton()
+        info_btn.setText("?")
+        info_btn.setToolTip(info_text)
+        info_btn.setFixedWidth(24)
+        info_btn.clicked.connect(lambda: QMessageBox.information(self, "Parameter info", info_text))
+
+        row_layout.addWidget(widget, 1)
+        row_layout.addWidget(info_btn)
+        return row_widget
 
     def _collect_config_from_widgets(self):
         config = {
